@@ -1,0 +1,88 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+  background-color: #f8f9fa;
+}
+
+body, html, #app {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.server-info {
+  background-color: #e9ecef;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 500;
+  color: #495057;
+  user-select: text;
+}
+
+.editor-wrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-textarea {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 1em;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  resize: none;
+  background-color: #fff;
+}
+
+.editor-textarea:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.controls {
+  padding-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.controls button {
+  padding: 0.75rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.controls button:hover {
+  background-color: #0056b3;
+}
+
+.save-status {
+    color: #28a745;
+    font-weight: 500;
+}
