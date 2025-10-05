@@ -183,35 +183,42 @@ const GET_TEMPLATE: &str = r#"
         }
 
         #content-wrapper {
-            /* This wrapper is the scrollable viewport for our pages. */
+            /* Это наш вьюпорт для прокрутки. Он должен быть равен ширине экрана. */
             height: calc(100vh - 40px);
             width: 100vw;
             overflow: hidden;
-            scroll-snap-type: x mandatory; /* Snap to pages on scroll */
+            scroll-snap-type: x mandatory;
         }
 
         #content-container {
-            /* This container uses CSS columns to create a paginated layout. */
+            /* Это широкий элемент с колонками. */
             height: 100%;
             
-            /* The width of a single column's content area is the full viewport width minus the desired side margins. */
-            /* Using 50px total for margins (25px on each side). */
-            column-width: calc(100vw - 50px);
-            
-            /* The gap between columns creates the space between pages. */
-            column-gap: 50px;
-            
-            /* Padding on the container ensures the first and last pages are also correctly indented from the screen edges. */
+            /* Отступы по бокам ДОЛЖНЫ быть здесь. Это создает отступы для первой и последней страницы. */
             padding-left: 25px;
             padding-right: 25px;
             box-sizing: border-box;
-
-            /* Standard content styling */
+            
+            /* Ширина КОНТЕНТА внутри одной колонки. */
+            column-width: calc(100vw - 50px);
+            
+            /* Промежуток МЕЖДУ колонками. */
+            column-gap: 50px;
+            
+            /* Стандартные стили текста */
             font-size: 1.3em; 
             line-height: 1.6;
-            text-align: justify; /* Justify text for a book-like feel */
+            text-align: justify;
         }
-        
+
+        #content-container::after {
+            content: '';
+            display: block; /* Важно использовать block, чтобы он занял свою колонку */
+            width: calc(100vw - 50px); /* Ширина контента одной страницы */
+            height: 1px; /* Минимальная высота, чтобы элемент существовал */
+            break-before: column; /* Гарантируем, что он всегда начнет новую колонку */
+        }
+                
         /* Rules to prevent elements from breaking across columns (pages) */
         #content-container h1, 
         #content-container h2, 
@@ -295,13 +302,14 @@ const GET_TEMPLATE: &str = r#"
         const pageCounter = document.getElementById('page-counter');
         
         function updateLayout() {
-            // A small buffer is sometimes needed for calculations
-            if (container.scrollWidth <= wrapper.clientWidth + 2) {
-                totalPages = 1;
-            } else {
-                totalPages = Math.round(container.scrollWidth / wrapper.clientWidth);
-            }
-            
+            // Используем Math.ceil для подсчета. Если контент занимает 2.1 страницы,
+            // нам нужно 3 "экрана" для его отображения. Это самый надежный способ.
+            const realTotalPages = Math.ceil(container.scrollWidth / wrapper.clientWidth);
+
+            // Количество страниц для пользователя = реальное количество минус одна (фиктивная).
+            totalPages = Math.max(1, realTotalPages - 1);
+
+            // Ограничиваем currentPage, чтобы пользователь не мог перейти на фиктивную страницу.
             currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
             
             updateUi();
@@ -310,13 +318,17 @@ const GET_TEMPLATE: &str = r#"
         function updateUi() {
             if (totalPages > 0) {
                 pageCounter.textContent = `Страница ${currentPage + 1} из ${totalPages}`;
-                // Using 'auto' scroll for instant page turns, ideal for e-ink devices.
+                
+                // Больше никаких сложных формул!
+                // Просто прокручиваем на N экранов. Браузер сам справится с позиционированием.
+                const scrollLeftPosition = currentPage * wrapper.clientWidth;
+
                 wrapper.scrollTo({
-                    left: currentPage * wrapper.clientWidth,
-                    behavior: 'auto' // No animation
+                    left: scrollLeftPosition,
+                    behavior: 'auto'
                 });
             } else {
-                 pageCounter.textContent = 'Нет страниц';
+                pageCounter.textContent = 'Нет страниц';
             }
         }
 
@@ -369,7 +381,6 @@ const GET_TEMPLATE: &str = r#"
             isUpdating = true;
             container.innerHTML = initialContent;
             
-            // Allow the browser time to render content and calculate dimensions
             setTimeout(() => {
                 updateLayout();
                 setupNavigation();
