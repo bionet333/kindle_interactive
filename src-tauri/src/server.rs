@@ -99,7 +99,7 @@ async fn get_page_handler(State(state): State<Arc<AppState>>) -> impl IntoRespon
     let html_template = GET_TEMPLATE
         .replace("{{ initial_hash }}", &initial_hash)
         .replace(
-            "{{ initial_content | tojson }}",
+            "{{ initial_content_json }}",
             &serde_json::to_string(&initial_content).unwrap_or_else(|_| "''".to_string()),
         );
 
@@ -171,103 +171,221 @@ const GET_TEMPLATE: &str = r#"
     <title>Текст для чтения</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Georgia', serif; color: #111; background-color: #fdfdfd; }
-        #book-viewport { height: calc(100% - 40px); overflow: hidden; }
-        #ui-bar { height: 40px; position: fixed; bottom: 0; left: 0; width: 100%; background-color: rgba(255, 255, 255, 0.9); border-top: 1px solid #ddd; display: flex; justify-content: center; align-items: center; box-sizing: border-box; padding: 0 1em; user-select: none; font-family: sans-serif; color: #555; }
-        #book-pages-container { display: flex; height: 100%; }
-        .page { flex-shrink: 0; width: 100%; height: 100%; box-sizing: border-box; padding: 1em 1.5em; overflow: hidden; font-size: 1.3em; line-height: 1.6; }
-        .page h1, .page h2, .page h3 { line-height: 1.2; }
-        .page img { max-width: 100%; height: auto; }
-        .page blockquote { border-left: 4px solid #ccc; padding-left: 1em; margin-left: 0; }
-        .page pre, .page code { white-space: pre-wrap !important; word-break: break-all; font-size: 0.85em; background-color: #f3f3f3; border-radius: 4px; padding: 2px 4px; }
-        .page pre { padding: 1em; }
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%;
+            height: 100%; 
+            overflow: hidden; /* Prevent vertical scrollbar */
+            font-family: 'Georgia', serif; 
+            color: #111; 
+            background-color: #fdfdfd; 
+        }
+
+        #content-wrapper {
+            /* This wrapper is the scrollable viewport for our pages. */
+            height: calc(100vh - 40px);
+            width: 100vw;
+            overflow: hidden;
+            scroll-snap-type: x mandatory; /* Snap to pages on scroll */
+        }
+
+        #content-container {
+            /* This container uses CSS columns to create a paginated layout. */
+            height: 100%;
+            
+            /* The width of a single column's content area is the full viewport width minus the desired side margins. */
+            /* Using 50px total for margins (25px on each side). */
+            column-width: calc(100vw - 50px);
+            
+            /* The gap between columns creates the space between pages. */
+            column-gap: 50px;
+            
+            /* Padding on the container ensures the first and last pages are also correctly indented from the screen edges. */
+            padding-left: 25px;
+            padding-right: 25px;
+            box-sizing: border-box;
+
+            /* Standard content styling */
+            font-size: 1.3em; 
+            line-height: 1.6;
+            text-align: justify; /* Justify text for a book-like feel */
+        }
+        
+        /* Rules to prevent elements from breaking across columns (pages) */
+        #content-container h1, 
+        #content-container h2, 
+        #content-container h3,
+        #content-container pre, 
+        #content-container blockquote, 
+        #content-container table, 
+        #content-container img,
+        #content-container figure {
+            break-inside: avoid;
+        }
+        
+        #content-container p {
+            widows: 2;
+            orphans: 2;
+        }
+        
+        #content-container h1, #content-container h2, #content-container h3 { 
+            line-height: 1.2; 
+            text-align: left;
+        }
+
+        #content-container img { 
+            max-width: 100%; 
+            height: auto; 
+        }
+        
+        #content-container blockquote { 
+            border-left: 4px solid #ccc; 
+            padding-left: 1em; 
+            margin-left: 0; 
+        }
+        #content-container pre, #content-container code { 
+            white-space: pre-wrap !important; 
+            word-break: break-word;
+            font-size: 0.85em; 
+            background-color: #f3f3f3; 
+            border-radius: 4px; 
+            padding: 2px 4px;
+            text-align: left;
+        }
+        #content-container pre { 
+            padding: 1em; 
+            overflow-x: auto;
+        }
+
+        /* UI Bar styling (unchanged) */
+        #ui-bar { 
+            height: 40px; 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background-color: rgba(255, 255, 255, 0.9); 
+            border-top: 1px solid #ddd; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            box-sizing: border-box; 
+            padding: 0 1em; 
+            user-select: none; 
+            font-family: sans-serif; 
+            color: #555; 
+        }
     </style>
 </head>
 <body>
-    <div id="book-viewport"><div id="book-pages-container"></div></div>
+    <div id="content-wrapper">
+        <div id="content-container"></div>
+    </div>
     <div id="ui-bar"><div id="page-counter"></div></div>
+    
     <script>
         let currentPage = 0;
         let totalPages = 0;
         let currentHash = "{{ initial_hash }}";
-        const viewport = document.getElementById('book-viewport');
-        const pagesContainer = document.getElementById('book-pages-container');
+        let isUpdating = false;
+
+        const wrapper = document.getElementById('content-wrapper');
+        const container = document.getElementById('content-container');
         const pageCounter = document.getElementById('page-counter');
-        function paginate(sourceHtml) {
-            pagesContainer.innerHTML = '';
-            const sourceDiv = document.createElement('div');
-            sourceDiv.innerHTML = sourceHtml;
-            const elements = Array.from(sourceDiv.children);
-            if (elements.length === 0) {
-                pagesContainer.innerHTML = '<div class="page"><p>Нет текста.</p></div>';
-                totalPages = 1; return;
+        
+        function updateLayout() {
+            // A small buffer is sometimes needed for calculations
+            if (container.scrollWidth <= wrapper.clientWidth + 2) {
+                totalPages = 1;
+            } else {
+                totalPages = Math.round(container.scrollWidth / wrapper.clientWidth);
             }
-            const pageHeight = viewport.offsetHeight;
-            let currentPageHTML = '';
-            const pagesContent = [];
-            const measurePage = document.createElement('div');
-            measurePage.className = 'page';
-            measurePage.style.visibility = 'hidden';
-            measurePage.style.position = 'absolute';
-            measurePage.style.height = 'auto';
-            document.body.appendChild(measurePage);
-            for (const el of elements) {
-                const testHTML = currentPageHTML + el.outerHTML;
-                measurePage.innerHTML = testHTML;
-                if (measurePage.scrollHeight > pageHeight && currentPageHTML !== '') {
-                    pagesContent.push(currentPageHTML);
-                    currentPageHTML = el.outerHTML;
-                } else { currentPageHTML = testHTML; }
-            }
-            if (currentPageHTML !== '') { pagesContent.push(currentPageHTML); }
-            document.body.removeChild(measurePage);
-            pagesContent.forEach(pageHtml => {
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'page';
-                pageDiv.innerHTML = pageHtml;
-                pagesContainer.appendChild(pageDiv);
-            });
-            totalPages = pagesContent.length;
+            
+            currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
+            
+            updateUi();
         }
+
+        function updateUi() {
+            if (totalPages > 0) {
+                pageCounter.textContent = `Страница ${currentPage + 1} из ${totalPages}`;
+                // Using 'auto' scroll for instant page turns, ideal for e-ink devices.
+                wrapper.scrollTo({
+                    left: currentPage * wrapper.clientWidth,
+                    behavior: 'auto' // No animation
+                });
+            } else {
+                 pageCounter.textContent = 'Нет страниц';
+            }
+        }
+
         function showPage(pageIndex) {
-            if (pageIndex < 0 || pageIndex >= totalPages) return;
+            if (isUpdating || pageIndex < 0 || pageIndex >= totalPages) return;
             currentPage = pageIndex;
-            pagesContainer.style.transform = `translateX(-${currentPage * 100}%)`;
-            pageCounter.textContent = totalPages > 0 ? `Страница ${currentPage + 1} из ${totalPages}` : '';
+            updateUi();
         }
+
         function setupNavigation() {
-            viewport.addEventListener('click', (event) => {
-                if (event.target.closest('#ui-bar')) return;
-                if (event.clientX > window.innerWidth / 2) { showPage(currentPage + 1); } else { showPage(currentPage - 1); }
+            document.body.addEventListener('click', (event) => {
+                if (event.target.closest('#ui-bar') || event.button !== 0) return;
+                
+                const rect = document.body.getBoundingClientRect();
+                if (event.clientX > rect.left + rect.width / 2) {
+                    showPage(currentPage + 1);
+                } else {
+                    showPage(currentPage - 1);
+                }
             });
         }
+
         async function checkForUpdates() {
+            if (isUpdating) return;
             try {
-                // Use a cache-busting query parameter for robustness, though server headers should suffice
                 const response = await fetch(`/api/content?_=${new Date().getTime()}`);
                 if (!response.ok) return;
                 const data = await response.json();
+                
                 if (data.hash !== currentHash) {
+                    isUpdating = true;
+                    console.log("Получено обновление контента. Новый хэш:", data.hash);
                     currentHash = data.hash;
-                    paginate(data.html);
-                    showPage(0);
+                    
+                    container.innerHTML = data.html;
+                    
+                    setTimeout(() => {
+                        currentPage = 0; // Сброс на первую страницу при обновлении
+                        updateLayout();
+                        isUpdating = false;
+                    }, 100); 
                 }
-            } catch (error) { console.error('Ошибка при проверке обновлений:', error); }
+            } catch (error) {
+                console.error('Ошибка при проверке обновлений:', error);
+                isUpdating = false;
+            }
         }
-        document.addEventListener('DOMContentLoaded', () => {
-            paginate({{ initial_content | tojson }});
-            showPage(0);
-            setupNavigation();
-            setInterval(checkForUpdates, 3000);
+
+        function initialize(initialContent) {
+            isUpdating = true;
+            container.innerHTML = initialContent;
+            
+            // Allow the browser time to render content and calculate dimensions
+            setTimeout(() => {
+                updateLayout();
+                setupNavigation();
+                setInterval(checkForUpdates, 3000);
+                isUpdating = false;
+            }, 100);
+
             let resizeTimeout;
             window.addEventListener('resize', () => {
                 clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    const allPageHtml = Array.from(document.querySelectorAll('.page')).map(p => p.innerHTML).join('');
-                    paginate(allPageHtml);
-                    showPage(Math.min(currentPage, totalPages - 1));
-                }, 250);
+                resizeTimeout = setTimeout(updateLayout, 250);
             });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initialize({{ initial_content_json }});
         });
     </script>
 </body>
