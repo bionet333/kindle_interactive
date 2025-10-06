@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "kindle-app",
+  "productName": "Kindle Interactive (KI)",
   "version": "0.1.0",
-  "identifier": "com.networksx333.kindle-app",
+  "identifier": "com.networksx333.ki",
   "build": {
     "beforeDevCommand": "trunk serve",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "kindle-app",
+        "title": "Kindle Interactive",
         "width": 800,
         "height": 600
       }

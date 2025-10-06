@@ -1,5 +1,5 @@
 [package]
-name = "kindle-app-ui"
+name = "ki-ui"
 version = "0.1.0"
 edition = "2021"
 

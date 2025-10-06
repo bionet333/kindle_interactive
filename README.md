@@ -1,58 +1,86 @@
-# E-Ink Sync: Desktop Editor & Web Reader
+# Kindle Interactive (KI)
 
-This application provides a desktop interface built with Tauri and Yew to edit Markdown text. The text is served over the local network via a lightweight, embedded Rust web server, optimized for e-ink reading devices.
+<div align="center">
+  <p><strong>Кросс-платформенное десктопное приложение для бесшовной отправки веб-статей и текста на Kindle или другие E-Ink читалки по локальной сети.</strong></p>
+</div>
 
-The core functionality has been implemented in a high-performance, concurrent Rust backend, providing a seamless, native experience.
+---
 
-## Core Features
+Kindle Interactive (KI) предоставляет десктопный интерфейс (созданный с помощью Tauri и Yew) для редактирования Markdown-текста или загрузки и преобразования веб-статей. Обработанный контент раздается по вашей локальной сети через легковесный встроенный веб-сервер на Rust, оптимизированный для E-Ink устройств.
 
-- **Native Desktop Editor**: A clean, simple Markdown editor built with Yew (WASM) and Rust.
-- **Embedded Web Server**: A high-performance Axum web server serves the content to devices on the same network.
-- **Optimized for E-Ink**: The reader webpage (`/get`) has zero animations and client-side pagination for instant page turns.
-- **Live Updates**: The e-ink reader automatically polls for content changes, ensuring it's always in sync with the editor.
+## ✨ Основные возможности
 
-## Architecture Overview
+- **Кросс-платформенность**: Нативное приложение для Windows, macOS и Linux.
+- **URL в Markdown**: Вставьте URL любой статьи, чтобы автоматически загрузить, очистить и преобразовать ее в Markdown.
+- **Редактор текста**: Простой встроенный Markdown-редактор для ваших заметок и текста.
+- **Мониторинг буфера обмена**: Автоматическая обработка и отправка URL, скопированного в буфер обмена.
+- **Встроенный веб-сервер**: Высокопроизводительный сервер на Axum раздает контент любому устройству в той же сети.
+- **Оптимизация для E-Ink**: Веб-страница для чтения спроектирована для E-Ink экранов, без анимаций и с клиентской пагинацией для мгновенного перелистывания.
+- **Живые обновления**: Читалка автоматически опрашивает сервер на предмет изменений контента.
 
-The application follows a clean, decoupled architecture:
-1.  **Tauri Shell**: The native desktop window and process manager.
-2.  **Yew Frontend (WASM)**: The user interface running inside the Tauri WebView. It communicates with the backend via Tauri's `invoke` API.
-3.  **Rust Backend**:
-    - **Tauri Commands**: A set of functions (`get_text`, `set_text`) that act as the API layer for the frontend.
-    - **Shared State**: A thread-safe, in-memory store (`AppState`) for the Markdown content.
-    - **Axum Web Server**: An embedded web server that runs in a background thread, reading from the shared state to serve content to e-ink devices on the local network.
+## 🔧 Как пользоваться
 
-## Development Setup
+1.  Запустите приложение. В верхней части окна появится адрес, например, `Откройте на читалке: http://192.168.1.5:5001/get`.
+2.  Откройте этот адрес в браузере на вашей читалке (устройства должны быть в одной Wi-Fi сети).
+3.  **Для отправки статьи**: Вставьте URL в верхнее поле и нажмите "Отправить".
+4.  **Для отправки текста**: Введите или вставьте текст в формате Markdown в большое текстовое поле и нажмите "Сохранить и обновить читалку".
+5.  **Для автоматической отправки**: Активируйте опцию "Отправлять при копировании". Теперь просто скопируйте URL любой статьи в буфер обмена, и она автоматически отправится на читалку.
 
-### Prerequisites
+## 🛠️ Стек технологий
 
-- [Rust and Cargo](https://www.rust-lang.org/tools/install)
-- [Node.js](https://nodejs.org/en/) (for Tauri's internal web dependencies)
-- [Trunk](https://trunkrs.dev/#install)
+- **Фреймворк**: [Tauri](https://tauri.app/) (Rust бэкенд, WebView фронтенд)
+- **Фронтенд**: [Yew](https://yew.rs/) (WebAssembly фреймворк на Rust)
+- **Веб-сервер**: [Axum](https://github.com/tokio-rs/axum)
+- **Парсинг статей**: [Readability](https://github.com/mozilla/readability)
+- **Язык**: [Rust](https://www.rust-lang.org/)
+
+## 🚀 Установка и запуск
+
+### Необходимые компоненты
+
+- [Rust и Cargo](https://www.rust-lang.org/tools/install)
+- [Node.js](https://nodejs.org/en/)
+- [Trunk](https://trunkrs.dev/#install): `cargo install trunk`
 - Tauri CLI: `cargo install tauri-cli`
+- **Инструменты сборки для вашей ОС**:
+    - **Windows**: [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+    - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+    - **Linux (Debian/Ubuntu)**: `sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
 
-### Running the Application
+### Режим разработки
 
-1.  **Run in development mode**:
+1.  **Клонируйте репозиторий**:
+    ```sh
+    git clone https://your-repo-url/kindle-interactive.git
+    cd kindle-interactive
+    ```
+
+2.  **Запустите в режиме разработки**:
     ```sh
     cargo tauri dev
     ```
 
-This command will start the Tauri application, including the Yew frontend and the Rust backend server.
-
-### Building for Production
-
-To build a distributable, native application, run:
+### Сборка для релиза
 
 ```sh
  cargo tauri build
 ```
 
-## Logging and Diagnostics
+Установщик или пакет приложения будет находиться в `src-tauri/target/release/bundle/`.
 
-The application includes a comprehensive logging setup (`tauri-plugin-log`) to aid in debugging and monitoring. Logs are crucial for diagnosing issues like content not updating on the reader device.
+## 🔄 CI/CD и Релизы
 
-- **Backend Logs**: Viewable in the terminal where you run `cargo tauri dev`. They show server status, requests from the reader, and state updates from the editor.
-- **Frontend Logs**: Viewable in the WebView's developer console (press F12 or right-click -> Inspect).
-- **File Logs**: Persisted in the application's log directory for post-mortem analysis.
+Проект использует GitHub Actions для автоматической сборки и публикации релизов.
 
-This setup allows developers to trace the entire data flow from a button click in the UI to a content update request from the e-ink device.
+- **Сборка**: Каждое изменение в ветке `main` запускает сборку приложения для Linux, Windows и macOS.
+- **Публикация релиза**: Чтобы создать новый релиз:
+    1.  Обновите версию в `src-tauri/Cargo.toml` и `src-tauri/tauri.conf.json`.
+    2.  Создайте коммит: `git commit -am "release: vX.Y.Z"`.
+    3.  Создайте git-тег: `git tag vX.Y.Z`.
+    4.  Отправьте коммит и тег: `git push && git push --tags`.
+
+Отправка нового тега запустит CI, который соберет приложение для всех платформ и создаст черновик релиза на GitHub с готовыми для скачивания артефактами.
+
+## 📄 Лицензия
+
+Этот проект лицензирован под MIT License.

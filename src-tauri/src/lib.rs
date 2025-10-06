@@ -27,7 +27,7 @@ pub fn run() {
             Target::new(TargetKind::Webview),
             // `TargetKind::LogDir` automatically resolves the correct application log directory.
             Target::new(TargetKind::LogDir {
-                file_name: Some("kindle-app.log".into()),
+                file_name: Some("ki.log".into()),
             }),
         ])
         .timezone_strategy(TimezoneStrategy::UseLocal)
