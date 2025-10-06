@@ -6,6 +6,7 @@ use tauri::Manager;
 // CORRECTED: Import `Target` and `TargetKind` for the updated tauri-plugin-log v2 API.
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 
+mod clipboard;
 mod commands;
 mod core;
 mod network;
@@ -38,20 +39,27 @@ tauri::Builder::default()
         .plugin(log_plugin)
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // Retrieve the state from Tauri's manager to ensure the server and commands
+            // Retrieve the state from Tauri's manager to ensure all components
             // use the exact same state instance.
-            let server_state = app.state::<Arc<AppState>>().inner().clone();
+            let managed_state = app.state::<Arc<AppState>>().inner().clone();
 
             // Spawn the web server in a background async task.
+            let server_state = managed_state.clone();
             tauri::async_runtime::spawn(async move {
                 server::run_server(server_state).await;
             });
+
+            // Spawn the clipboard monitor in a dedicated background thread.
+            let clipboard_state = managed_state;
+            clipboard::spawn_monitor(clipboard_state);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_text,
             // `set_text` command removed, functionality is now handled by an HTTP endpoint.
-            commands::get_server_info
+            commands::get_server_info,
+            commands::set_clipboard_monitoring
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

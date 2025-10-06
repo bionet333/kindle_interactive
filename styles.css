@@ -137,3 +137,22 @@ body, html, #app {
     color: #28a745;
     font-weight: 500;
 }
+
+.auto-send-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto; /* Pushes the element to the far right */
+    user-select: none;
+}
+
+.auto-send-toggle input {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.auto-send-toggle label {
+    cursor: pointer;
+    color: #495057;
+}

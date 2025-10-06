@@ -25,6 +25,7 @@ serde_json = "1"
 
 # Application-specific dependencies
 ammonia = "3.3.0"
+arboard = "3.4.0"
 axum = "0.7"
 html2md = "0.2"
 local-ip-address = "0.6"

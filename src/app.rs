@@ -23,6 +23,12 @@ struct FetchUrlPayload {
     url: String,
 }
 
+// Payload for the command to toggle clipboard monitoring.
+#[derive(Serialize)]
+struct SetClipboardMonitoringArgs {
+    enabled: bool,
+}
+
 // Generic response from API calls.
 #[derive(Deserialize)]
 struct ApiResponse {
@@ -44,6 +50,9 @@ pub fn app() -> Html {
 
     // State for server info
     let server_info = use_state(|| "Загрузка информации о сервере...".to_string());
+
+    // State for clipboard monitoring checkbox
+    let auto_send_on_copy = use_state(|| false);
 
     // Effect to load initial data from the Rust backend when the component mounts.
     {
@@ -111,8 +120,6 @@ pub fn app() -> Html {
                 let mut opts = RequestInit::new();
                 opts.set_method("POST");
 
-                // CORRECTED: `JSON::stringify` returns a `JsString`. We must convert it to `JsValue`
-                // before taking a reference for `set_body`.
                 let body_js_value: JsValue = js_sys::JSON::stringify(&payload_js_value).unwrap().into();
                 opts.set_body(Some(&body_js_value).as_ref().unwrap());
 
@@ -188,8 +195,6 @@ pub fn app() -> Html {
                 let mut opts = RequestInit::new();
                 opts.set_method("POST");
 
-                // CORRECTED: `JSON::stringify` returns a `JsString`. We must convert it to `JsValue`
-                // before taking a reference for `set_body`.
                 let body_js_value: JsValue = js_sys::JSON::stringify(&payload_js_value).unwrap().into();
                 opts.set_body(Some(&body_js_value).as_ref().unwrap());
                 
@@ -237,6 +242,21 @@ pub fn app() -> Html {
         })
     };
 
+    // Callback for the clipboard monitoring checkbox.
+    let on_auto_send_toggle = {
+        let auto_send_on_copy = auto_send_on_copy.clone();
+        Callback::from(move |_e: Event| {
+            let new_value = !*auto_send_on_copy;
+            auto_send_on_copy.set(new_value);
+
+            spawn_local(async move {
+                let args = SetClipboardMonitoringArgs { enabled: new_value };
+                let args_js = serde_wasm_bindgen::to_value(&args).unwrap();
+                invoke("set_clipboard_monitoring", args_js).await;
+            });
+        })
+    };
+
     html! {
         <main class="container">
             <div class="server-info">
@@ -272,6 +292,16 @@ pub fn app() -> Html {
                     { if *is_saving { "Сохранение..." } else { "Сохранить и обновить читалку" } }
                 </button>
                 <span class="save-status">{&*save_status}</span>
+
+                <div class="auto-send-toggle">
+                    <input
+                        type="checkbox"
+                        id="autoSend"
+                        checked={*auto_send_on_copy}
+                        onchange={on_auto_send_toggle}
+                    />
+                    <label for="autoSend">{"Отправлять при копировании"}</label>
+                </div>
             </div>
         </main>
     }

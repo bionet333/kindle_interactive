@@ -1,6 +1,7 @@
 use crate::network::get_local_ip_address;
 use crate::server::SERVER_PORT;
 use crate::state::AppState;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tauri::State;
 
@@ -29,4 +30,14 @@ pub fn get_server_info() -> Result<String, String> {
         )),
         None => Ok("Не удалось определить IP-адрес. Проверьте подключение к сети.".to_string()),
     }
+}
+
+/// Enables or disables automatic clipboard monitoring.
+#[tauri::command]
+pub fn set_clipboard_monitoring(enabled: bool, state: State<Arc<AppState>>) -> Result<(), String> {
+    state
+        .monitor_clipboard
+        .store(enabled, Ordering::Relaxed);
+    log::info!("Clipboard monitoring set to: {}", enabled);
+    Ok(())
 }
