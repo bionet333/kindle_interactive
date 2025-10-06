@@ -11,6 +11,7 @@ mod core;
 mod network;
 mod server;
 mod state;
+mod url_processor;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

@@ -1,4 +1,4 @@
-use crate::{core::process_markdown, state::AppState};
+use crate::{core::process_markdown, state::AppState, url_processor};
 use axum::{
     extract::State,
     http::{
@@ -33,10 +33,21 @@ struct SetTextPayload {
     new_text: String,
 }
 
+// Payload for the POST /api/url endpoint.
+#[derive(Deserialize, Debug)]
+struct FetchUrlPayload {
+    url: String,
+}
+
+// Generic JSON response for API actions.
+#[derive(Serialize, Debug)]
+struct ApiResponse {
+    message: String,
+}
+
 /// Initializes and runs the Axum web server.
 pub async fn run_server(app_state: Arc<AppState>) {
     // Explicitly configure CORS to allow POST requests with a JSON content type from any origin.
-    // This is crucial for the Yew web UI to be able to save content via HTTP request.
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([Method::GET, Method::POST])
@@ -44,11 +55,12 @@ pub async fn run_server(app_state: Arc<AppState>) {
 
     let app = Router::new()
         .route("/get", get(get_page_handler))
-        // The /api/content route now handles both GET for polling and POST for updates.
         .route(
             "/api/content",
             get(api_content_handler).post(api_set_content_handler),
         )
+        // New route for fetching and processing a URL.
+        .route("/api/url", post(api_fetch_url_handler))
         .with_state(app_state)
         .layer(cors);
 
@@ -162,6 +174,38 @@ async fn api_set_content_handler(
     }
 }
 
+/// Handler for the `POST /api/url` route, fetching content and updating state.
+async fn api_fetch_url_handler(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<FetchUrlPayload>,
+) -> impl IntoResponse {
+    info!("Request received to fetch URL: {}", payload.url);
+
+    match url_processor::process_url(&payload.url).await {
+        Ok(markdown_content) => match state.shared_text.write() {
+            Ok(mut text) => {
+                *text = markdown_content;
+                info!("Successfully updated shared text from URL.");
+                let response = ApiResponse {
+                    message: "Отправлено".to_string(),
+                };
+                (StatusCode::OK, Json(response))
+            }
+            Err(e) => {
+                error!("Failed to acquire write lock for AppState: {}", e);
+                let response = ApiResponse {
+                    message: "Ошибка сервера: не удалось обновить текст.".to_string(),
+                };
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
+            }
+        },
+        Err(e) => {
+            error!("Failed to process URL {}: {}", payload.url, e);
+            let response = ApiResponse { message: e };
+            (StatusCode::BAD_REQUEST, Json(response))
+        }
+    }
+}
 
 const GET_TEMPLATE: &str = r#"
 <!DOCTYPE html>
