@@ -5,12 +5,14 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use tauri::Emitter;
 
 /// Spawns a dedicated thread to monitor the system clipboard for changes.
 ///
-/// When monitoring is enabled and new, non-empty text is found, it updates
-/// the shared application state.
-pub fn spawn_monitor(state: Arc<AppState>) {
+/// Depending on the `AppState` flags, this function can:
+/// 1. Directly replace the shared text for the e-reader.
+/// 2. Emit an event to the frontend to add the text to the editor.
+pub fn spawn_monitor(state: Arc<AppState>, handle: tauri::AppHandle) {
     thread::spawn(move || {
         info!("Clipboard monitoring thread started.");
         let mut clipboard = match Clipboard::new() {
@@ -21,39 +23,46 @@ pub fn spawn_monitor(state: Arc<AppState>) {
             }
         };
 
-        // Store the last text seen to avoid redundant updates.
         let mut last_text = clipboard.get_text().unwrap_or_default();
 
         loop {
-            // Only proceed if monitoring is enabled.
-            if state.monitor_clipboard.load(Ordering::Relaxed) {
-                match clipboard.get_text() {
-                    Ok(current_text) => {
-                        // Check if the text is new, not empty, and different from the last.
-                        if !current_text.trim().is_empty() && current_text != last_text {
-                            info!("New text detected in clipboard. Updating shared state.");
+            let send_enabled = state.send_on_copy.load(Ordering::Relaxed);
+            let add_to_editor_enabled = state.add_to_editor_on_copy.load(Ordering::Relaxed);
+
+            if !send_enabled && !add_to_editor_enabled {
+                thread::sleep(Duration::from_millis(500));
+                continue;
+            }
+
+            match clipboard.get_text() {
+                Ok(current_text) => {
+                    if !current_text.trim().is_empty() && current_text != last_text {
+                        if send_enabled {
+                            info!("New text detected. Sending to e-reader.");
                             match state.shared_text.write() {
                                 Ok(mut shared_text) => {
                                     *shared_text = current_text.clone();
                                     last_text = current_text;
                                 }
                                 Err(e) => {
-                                    error!("Failed to acquire write lock for shared_text: {}", e);
+                                    error!("Failed to lock shared_text for sending: {}", e);
                                 }
                             }
+                        } else if add_to_editor_enabled {
+                            info!("New text detected. Emitting event to add to editor.");
+                            if let Err(e) = handle.emit("clipboard-add-to-editor", &current_text) {
+                                error!("Failed to emit clipboard event: {}", e);
+                            }
+                            last_text = current_text;
                         }
                     }
-                    Err(e) => {
-                        // This can happen if the clipboard content is not text (e.g., an image).
-                        // It's not a critical error, so we log it as a warning and clear last_text
-                        // to allow re-copying of text after a non-text item.
-                        warn!("Could not read text from clipboard: {}", e);
-                        last_text.clear();
-                    }
+                }
+                Err(e) => {
+                    warn!("Could not read text from clipboard: {}", e);
+                    last_text.clear();
                 }
             }
-            // Poll every 500ms. This is a reasonable balance to be responsive
-            // without excessive CPU usage.
+
             thread::sleep(Duration::from_millis(500));
         }
     });

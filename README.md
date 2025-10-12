@@ -13,7 +13,7 @@ Kindle Interactive (KI) предоставляет десктопный инте
 - **Кросс-платформенность**: Нативное приложение для Windows, macOS и Linux.
 - **URL в Markdown**: Вставьте URL любой статьи, чтобы автоматически загрузить, очистить и преобразовать ее в Markdown.
 - **Редактор текста**: Простой встроенный Markdown-редактор для ваших заметок и текста.
-- **Мониторинг буфера обмена**: Автоматическая обработка и отправка URL, скопированного в буфер обмена.
+- **Мониторинг буфера обмена**: Автоматическая обработка и отправка текста, скопированного в буфер обмена.
 - **Встроенный веб-сервер**: Высокопроизводительный сервер на Axum раздает контент любому устройству в той же сети.
 - **Оптимизация для E-Ink**: Веб-страница для чтения спроектирована для E-Ink экранов, без анимаций и с клиентской пагинацией для мгновенного перелистывания.
 - **Живые обновления**: Читалка автоматически опрашивает сервер на предмет изменений контента.
@@ -43,13 +43,14 @@ Kindle Interactive (KI) предоставляет десктопный инте
 - [Trunk](https://trunkrs.dev/#install): `cargo install trunk`
 - Tauri CLI: `cargo install tauri-cli`
 - **Инструменты сборки для вашей ОС**:
-    - **Windows**: [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-    - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
-    - **Linux (Debian/Ubuntu)**: `sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
+  - **Windows**: [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+  - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+  - **Linux (Debian/Ubuntu)**: `sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
 
 ### Режим разработки
 
 1.  **Клонируйте репозиторий**:
+
     ```sh
     git clone https://your-repo-url/kindle-interactive.git
     cd kindle-interactive
@@ -74,10 +75,10 @@ Kindle Interactive (KI) предоставляет десктопный инте
 
 - **Сборка**: Каждое изменение в ветке `main` запускает сборку приложения для Linux, Windows и macOS.
 - **Публикация релиза**: Чтобы создать новый релиз:
-    1.  Обновите версию в `src-tauri/Cargo.toml` и `src-tauri/tauri.conf.json`.
-    2.  Создайте коммит: `git commit -am "release: vX.Y.Z"`.
-    3.  Создайте git-тег: `git tag vX.Y.Z`.
-    4.  Отправьте коммит и тег: `git push && git push --tags`.
+  1.  Обновите версию в `src-tauri/Cargo.toml` и `src-tauri/tauri.conf.json`.
+  2.  Создайте коммит: `git commit -am "release: vX.Y.Z"`.
+  3.  Создайте git-тег: `git tag vX.Y.Z`.
+  4.  Отправьте коммит и тег: `git push && git push --tags`.
 
 Отправка нового тега запустит CI, который соберет приложение для всех платформ и создаст черновик релиза на GitHub с готовыми для скачивания артефактами.
 

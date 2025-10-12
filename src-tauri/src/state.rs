@@ -2,15 +2,13 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock};
 
 /// The shared, thread-safe state of the application.
-/// This struct holds all data that needs to be accessed by both the
-/// Tauri commands (from the UI) and the Axum web server.
 pub struct AppState {
-    /// The Markdown text content shared between the editor and the web reader.
-    /// Wrapped in `RwLock` to allow for concurrent reads and exclusive writes.
+    /// The Markdown text content shared with the web reader.
     pub shared_text: RwLock<String>,
-    /// A flag to enable or disable clipboard monitoring. It's atomic to allow
-    /// for safe, lock-free access from the UI command and the monitoring thread.
-    pub monitor_clipboard: Arc<AtomicBool>,
+    /// Flag to enable replacing shared text with clipboard content (sends to e-reader).
+    pub send_on_copy: Arc<AtomicBool>,
+    /// Flag to enable appending clipboard content to the editor (does not send).
+    pub add_to_editor_on_copy: Arc<AtomicBool>,
 }
 
 impl Default for AppState {
@@ -20,7 +18,8 @@ impl Default for AppState {
             shared_text: RwLock::new(
                 "## Добро пожаловать!\n\nЭто редактор для вашей E-Ink читалки. Введите текст в формате Markdown здесь, и он появится на странице, которую вы откроете на читалке.".to_string(),
             ),
-            monitor_clipboard: Arc::new(AtomicBool::new(false)),
+            send_on_copy: Arc::new(AtomicBool::new(false)),
+            add_to_editor_on_copy: Arc::new(AtomicBool::new(false)),
         }
     }
 }

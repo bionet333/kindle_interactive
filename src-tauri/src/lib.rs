@@ -3,7 +3,6 @@
 use crate::state::AppState;
 use std::sync::Arc;
 use tauri::Manager;
-// CORRECTED: Import `Target` and `TargetKind` for the updated tauri-plugin-log v2 API.
 use tauri_plugin_log::{Target, TargetKind, TimezoneStrategy};
 
 mod clipboard;
@@ -18,14 +17,10 @@ mod url_processor;
 pub fn run() {
     let app_state = Arc::new(AppState::default());
 
-    // Initialize the logger plugin using the correct API for Tauri v2.
-    // The plugin is configured here and then registered on the main `tauri::Builder`.
     let log_plugin = tauri_plugin_log::Builder::new()
-        // CORRECTED: Each target must be created with `Target::new` and an enum variant from `TargetKind`.
         .targets([
             Target::new(TargetKind::Stdout),
             Target::new(TargetKind::Webview),
-            // `TargetKind::LogDir` automatically resolves the correct application log directory.
             Target::new(TargetKind::LogDir {
                 file_name: Some("ki.log".into()),
             }),
@@ -33,15 +28,13 @@ pub fn run() {
         .timezone_strategy(TimezoneStrategy::UseLocal)
         .build();
 
-tauri::Builder::default()
-        // The state is moved into Tauri's state manager. Both the server and commands will access it from here.
+    tauri::Builder::default()
         .manage(app_state)
         .plugin(log_plugin)
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // Retrieve the state from Tauri's manager to ensure all components
-            // use the exact same state instance.
             let managed_state = app.state::<Arc<AppState>>().inner().clone();
+            let app_handle = app.handle().clone();
 
             // Spawn the web server in a background async task.
             let server_state = managed_state.clone();
@@ -51,15 +44,16 @@ tauri::Builder::default()
 
             // Spawn the clipboard monitor in a dedicated background thread.
             let clipboard_state = managed_state;
-            clipboard::spawn_monitor(clipboard_state);
+            clipboard::spawn_monitor(clipboard_state, app_handle);
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_text,
-            // `set_text` command removed, functionality is now handled by an HTTP endpoint.
+            commands::set_text,
             commands::get_server_info,
-            commands::set_clipboard_monitoring
+            commands::set_send_on_copy,
+            commands::set_add_to_editor_on_copy
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

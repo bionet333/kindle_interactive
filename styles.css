@@ -138,11 +138,17 @@ body, html, #app {
     font-weight: 500;
 }
 
+.toggle-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-left: auto; /* Pushes the group to the far right */
+}
+
 .auto-send-toggle {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-left: auto; /* Pushes the element to the far right */
     user-select: none;
 }
 
@@ -155,4 +161,10 @@ body, html, #app {
 .auto-send-toggle label {
     cursor: pointer;
     color: #495057;
+    transition: color 0.2s;
+}
+
+.auto-send-toggle label.disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
 }
